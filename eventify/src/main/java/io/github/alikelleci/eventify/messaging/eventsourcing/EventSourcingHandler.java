@@ -1,5 +1,7 @@
 package io.github.alikelleci.eventify.messaging.eventsourcing;
 
+import io.github.alikelleci.eventify.common.annotations.TopicInfo;
+import io.github.alikelleci.eventify.common.exceptions.TopicInfoMissingException;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.exceptions.AggregateInvocationException;
 import io.github.alikelleci.eventify.retry.Retry;
@@ -53,6 +55,11 @@ public class EventSourcingHandler implements BiFunction<Aggregate, Event, Aggreg
   private Aggregate applyEvent(Event event, Object result) {
     if (result == null) {
       return null;
+    }
+
+    TopicInfo topicInfo = CommonUtils.getTopicInfo(result);
+    if (topicInfo == null) {
+      throw new TopicInfoMissingException("You are trying to dispatch a message without any topic information. Please annotate your message with @TopicInfo.");
     }
 
     return Aggregate.builder()
