@@ -1,22 +1,26 @@
 package io.github.alikelleci.eventify.messaging.commandhandling;
 
 import io.github.alikelleci.eventify.constants.Handlers;
-import io.github.alikelleci.eventify.messaging.Repository;
-import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Success;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
 import org.apache.kafka.streams.processor.ProcessorContext;
+import org.apache.kafka.streams.state.TimestampedKeyValueStore;
+import org.apache.kafka.streams.state.ValueAndTimestamp;
+
+import java.util.Optional;
 
 
 @Slf4j
 public class CommandTransformer implements ValueTransformerWithKey<String, Command, CommandResult> {
 
-  private Repository repository;
+  private ProcessorContext context;
+  private TimestampedKeyValueStore<String, Aggregate> snapshotStore;
 
   @Override
   public void init(ProcessorContext processorContext) {
-    this.repository = new Repository(processorContext);
+    this.context = processorContext;
+    this.snapshotStore = context.getStateStore("snapshot-store");
   }
 
   @Override
@@ -27,30 +31,17 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
     }
 
     // 1. Load aggregate state
-    Aggregate aggregate = repository.loadAggregate(key);
+    Aggregate aggregate = Optional.ofNullable(snapshotStore.get(key))
+        .map(ValueAndTimestamp::value)
+        .orElse(null);
 
     // 2. Validate command against aggregate
-    CommandResult result = commandHandler.apply(aggregate, command);
-
-    if (result instanceof Success) {
-      // 3. Save events
-      ((Success) result).getEvents().forEach(event ->
-          repository.saveEvent(event));
-
-      // 4. Save snapshot if needed
-      if (aggregate != null && aggregate.getSnapshotTreshold() > 0) {
-        if (aggregate.getVersion() % aggregate.getSnapshotTreshold() == 0) {
-          log.debug("Creating new snapshot: {}", aggregate);
-          repository.saveSnapshot(aggregate);
-        }
-      }
-    }
-
-    return result;
+    return commandHandler.apply(aggregate, command);
   }
 
   @Override
   public void close() {
 
   }
+
 }

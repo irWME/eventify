@@ -2,7 +2,6 @@ package io.github.alikelleci.eventify.messaging.eventhandling;
 
 
 import io.github.alikelleci.eventify.constants.Topics;
-import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingTransformer;
 import io.github.alikelleci.eventify.support.serializer.CustomSerdes;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.serialization.Serdes;
@@ -22,10 +21,6 @@ public class EventStream {
     // Events --> Void
     events
         .transformValues(EventTransformer::new);
-
-    // Events --> Event Store
-    events
-        .transformValues(EventSourcingTransformer::new, "event-store", "snapshot-store");
   }
 
 }

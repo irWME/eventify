@@ -2,7 +2,6 @@ package io.github.alikelleci.eventify;
 
 import io.github.alikelleci.eventify.constants.Topics;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandStream;
-import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventhandling.EventStream;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.messaging.resulthandling.ResultStream;
@@ -71,16 +70,11 @@ public class Eventify {
   private Topology buildTopology() {
     StreamsBuilder builder = new StreamsBuilder();
 
-    // Event store
-    builder.addStateStore(Stores
-        .timestampedKeyValueStoreBuilder(Stores.persistentTimestampedKeyValueStore("event-store"), Serdes.String(), CustomSerdes.Json(Event.class))
-        .withLoggingEnabled(Collections.emptyMap()));
-
-    // Snapshot Store
-    builder.addStateStore(Stores
-        .timestampedKeyValueStoreBuilder(Stores.persistentTimestampedKeyValueStore("snapshot-store"), Serdes.String(), CustomSerdes.Json(Aggregate.class))
-        .withLoggingEnabled(Collections.emptyMap()));
-
+    if (CollectionUtils.isNotEmpty(Topics.COMMANDS)) {
+      builder.addStateStore(Stores
+          .timestampedKeyValueStoreBuilder(Stores.persistentTimestampedKeyValueStore("snapshot-store"), Serdes.String(), CustomSerdes.Json(Aggregate.class))
+          .withLoggingEnabled(Collections.emptyMap()));
+    }
 
     if (CollectionUtils.isNotEmpty(Topics.COMMANDS)) {
       CommandStream commandStream = new CommandStream();
