@@ -39,13 +39,23 @@ import java.util.stream.Stream;
 @Slf4j
 public class EventifyBuilder {
 
+  private final String applicationId;
+  private final String bootstrapServers;
+  private final String securityProtocol;
   private final Properties streamsConfig;
 
   private KafkaStreams.StateListener stateListener;
   private Thread.UncaughtExceptionHandler uncaughtExceptionHandler;
 
-  public EventifyBuilder(Properties streamsConfig) {
-    this.streamsConfig = streamsConfig;
+  public EventifyBuilder(String applicationId, String bootstrapServers, String securityProtocol) {
+    this.applicationId = applicationId;
+    this.bootstrapServers = bootstrapServers;
+    this.securityProtocol = securityProtocol;
+
+    this.streamsConfig = new Properties();
+    this.streamsConfig.putIfAbsent(StreamsConfig.APPLICATION_ID_CONFIG, applicationId);
+    this.streamsConfig.putIfAbsent(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+    this.streamsConfig.putIfAbsent(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, securityProtocol);
     this.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
     this.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
     this.streamsConfig.putIfAbsent(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE);
@@ -56,6 +66,11 @@ public class EventifyBuilder {
 //    interceptors.add(CommonProducerInterceptor.class.getName());
 //
 //    this.streamsConfig.putIfAbsent(StreamsConfig.producerPrefix(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG), interceptors);
+  }
+
+  public EventifyBuilder(String applicationId, String bootstrapServers, String securityProtocol, Properties streamsConfig) {
+    this(applicationId, bootstrapServers, securityProtocol);
+    streamsConfig.forEach(this.streamsConfig::putIfAbsent);
   }
 
   public EventifyBuilder setStateListener(KafkaStreams.StateListener stateListener) {

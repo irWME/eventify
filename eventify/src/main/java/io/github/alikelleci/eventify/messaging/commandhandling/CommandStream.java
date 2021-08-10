@@ -2,11 +2,13 @@ package io.github.alikelleci.eventify.messaging.commandhandling;
 
 
 import io.github.alikelleci.eventify.constants.Topics;
+import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Success;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.support.serializer.CustomSerdes;
 import io.github.alikelleci.eventify.util.CommonUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.kstream.Consumed;
@@ -31,6 +33,13 @@ public class CommandStream {
     commandResults
         .mapValues(CommandResult::getCommand)
         .to((key, command, recordContext) -> CommonUtils.getTopicInfo(command.getPayload()).value().concat(".results"),
+            Produced.with(Serdes.String(), CustomSerdes.Json(Command.class)));
+
+    // Results --> Push to reply topic
+    commandResults
+        .mapValues(CommandResult::getCommand)
+        .filter((key, command) -> StringUtils.isNotBlank(command.getMetadata().get(Metadata.REPLY_TO)))
+        .to((key, command, recordContext) -> command.getMetadata().get(Metadata.REPLY_TO).concat(".results"),
             Produced.with(Serdes.String(), CustomSerdes.Json(Command.class)));
 
     // Events --> Push
